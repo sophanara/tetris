@@ -178,19 +178,6 @@ func (gv *GameService) DropBlock() {
 	gv.GameContext.CurrentRowPosition = ypos
 
 	gv.ApplyPiecePosition()
-	// // Copy the previous board add the new shape
-	// board := make([][]int, BOARD_HEIGHT)
-	// for i := range board {
-	// 	board[i] = make([]int, BOARD_WIDTH)
-	// 	copy(board[i], gv.GameContext.Board[i])
-	// }
-	// // draw the shape
-	// for r := 0; r < len(shape); r++ {
-	// 	for c := 0; c < len(shape[r]); c++ {
-	// 		board[r+ypos][c+xpos] = shape[r][c]
-	// 	}
-	// }
-	// gv.boardSignal.Set(board)
 }
 
 func (gv *GameService) ApplyPiecePosition() {

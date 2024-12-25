@@ -18,7 +18,7 @@ func NewDebugScreen(gs *GameService) *DebugScreen {
 
 func (ds *DebugScreen) GetView() *tview.TextView {
 	scoreView := tview.NewTextView()
-	scoreView.SetBackgroundColor(tcell.ColorBlack).SetBorder(true)
+	scoreView.SetBackgroundColor(tcell.ColorBlack).SetBorder(true).SetTitle("Debug console")
 
 	go func() {
 		for msg := range ds.messageChanel {

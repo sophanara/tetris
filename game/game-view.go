@@ -1,8 +1,6 @@
 package game
 
 import (
-	"fmt"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -24,9 +22,7 @@ func (gv *GameView) InitTable(maxRow int, maxCol int) {
 
 	gv.TetrisScreen.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
 		// Calculate inner area (accounting for border)
-		w, _ := screen.Size()
 		wspace := width / 4
-		ts.SetTitle(fmt.Sprintf("width %d %d %d", width, w, wspace))
 		innerX := x + wspace
 		innerY := y + 1
 		// Draw the flex layout in the inner area
@@ -56,9 +52,6 @@ func (gv *GameView) GetView() *tview.Box {
 		AddItem(nil, 0, 2, false).
 		AddItem(cmdPanel, 0, 10, true)
 
-	col := tetrisScreen.GetColumnCount()
-	fmt.Printf("GetColumnCount %d\n", col)
-
 	gameBox.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
 		// Calculate inner area (accounting for border)
 		innerX := x + 1
@@ -75,8 +68,6 @@ func (gv *GameView) GetView() *tview.Box {
 }
 
 func (gv *GameView) UpdateView(board [][]int) {
-	// gv.TetrisScreen.Clear()
-
 	for r := 0; r < len(board); r++ {
 		for c := 0; c < len(board[r]); c++ {
 			gv.TetrisScreen.SetCell(r, c, tview.NewTableCell("   ").
