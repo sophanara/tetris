@@ -3,3 +3,5 @@ build:
 
 run: build
 	@./bin/tetris
+
+

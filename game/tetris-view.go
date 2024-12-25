@@ -1,6 +1,8 @@
 package game
 
 import (
+	"time"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -16,44 +18,87 @@ func (status GameStatus) String() string {
 	return [...]string{"Start", "end"}[status]
 }
 
-type GameContext struct {
-	Status GameStatus
-	Score  int
-}
-
 type TetrisView struct {
-	GameService *GameService
-	GameContext GameContext
+	ScoreBox        ScoreView
+	PreviewBox      PreviewView
+	GameBox         GameView
+	DebugBox        DebugScreen
+	OuterBox        *tview.Box
+	GameService     *GameService
+	NextShapeChanel <-chan [][]int
+	BordChanel      <-chan [][]int
+	Application     tview.Application
 }
 
 func NewTetrisView() *TetrisView {
-	gameContext := &GameContext{
-		Status: END,
-		Score:  0,
-	}
+	outerBox := tview.NewBox()
 	tetrisService := NewGameService()
+	gameBox := NewGameView(tetrisService)
+	previewBox := NewPreviewView(tetrisService)
+	scoreBox := NewScoreView()
+	debugbox := NewDebugScreen(tetrisService)
+
 	tetrisView := &TetrisView{
-		GameContext: *gameContext,
+		Application: *tview.NewApplication(),
+		OuterBox:    outerBox,
 		GameService: tetrisService,
+		GameBox:     *gameBox,
+		PreviewBox:  *previewBox,
+		ScoreBox:    *scoreBox,
+		DebugBox:    *debugbox,
 	}
+
 	return tetrisView
 }
 
+// UpdateNext implements NextShapeObserver.
+func (tv *TetrisView) UpdateNext(nextShape [][]int) {
+	// update the preview
+	tv.PreviewBox.UpdateView(nextShape)
+}
+
+func (tv *TetrisView) StartGame() {
+	tv.GameService.InitGame()
+	tv.GameService.DropBlock()
+	// Set up key bindings
+	tv.Application.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		key := event.Key()
+
+		switch key {
+		case tcell.KeyEscape:
+			tv.Application.Stop()
+		case tcell.KeyDown:
+			tv.GameService.MoveDown()
+		case tcell.KeyLeft:
+			tv.GameService.MoveLeft()
+		case tcell.KeyRight:
+			tv.GameService.MoveRight()
+		}
+		return event
+	})
+
+	// Start the game loop
+	go tv.startPeriodicUpdate()
+}
+
 func (tv *TetrisView) StartWindow() {
-	outerBox := tview.NewBox()
+	gameBox := tv.GameBox.GetView()
+	previewBox := tv.PreviewBox.GetView()
+	scoreView := tv.ScoreBox.GetView()
+	debugScreen := tv.DebugBox.GetView()
 
-	gameBox := tview.NewBox().SetBackgroundColor(tcell.ColorBlack).SetBorder(true).SetTitle("Go, Tetris!")
-	previewBox := NewPreviewView(tv.GameService).GetView()
-	scoreView := tview.NewBox().SetBackgroundColor(tcell.ColorBlack).SetBorder(true)
-
+	rightFlex := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(scoreView, 0, 1, false).
+		AddItem(debugScreen, 0, 1, false)
 	// Add the game box to the new flex element
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
-		AddItem(previewBox, 0, 1, true).
-		AddItem(gameBox, 0, 2, true).
-		AddItem(scoreView, 0, 1, true)
+		AddItem(previewBox, 0, 1, false).
+		AddItem(gameBox, 0, 2, false).
+		AddItem(rightFlex, 0, 1, false)
 
-	outerBox.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
+	tv.OuterBox.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
 		// Calculate inner area (accounting for border)
 		innerX := x + 1
 		innerY := y + 1
@@ -67,24 +112,16 @@ func (tv *TetrisView) StartWindow() {
 		return x, y, width, height
 	})
 
-	tetrisScreen := tview.NewBox().SetBackgroundColor(tcell.ColorDarkSlateGray)
-	gameBoxFlex := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(tetrisScreen, 0, 1, true)
+	ctxt := tv.GameService.GameContext
+	tv.GameBox.InitTable(ctxt.MaxRow, ctxt.MaxCol)
+	tv.Application.SetRoot(tv.OuterBox, true)
+}
 
-	gameBox.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
-		// Calculate inner area (accounting for border)
-		innerX := x + 10
-		innerY := y + 5
-		innerWidth := width - 20
-		innerHeight := height - 10
-		// Draw the flex layout in the inner area
-		gameBoxFlex.SetRect(innerX, innerY, innerWidth, innerHeight)
-		gameBoxFlex.Draw(screen)
-		return x, y, width, height
-	})
-
-	// Draw the outerBox full screen
-	if err := tview.NewApplication().SetRoot(outerBox, true).Run(); err != nil {
-		panic(err)
+func (tv *TetrisView) startPeriodicUpdate() {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		tv.GameService.MoveDown()
+		go tv.Application.Draw()
 	}
 }

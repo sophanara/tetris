@@ -6,24 +6,19 @@ import (
 )
 
 type PreviewView struct {
-	GameService *GameService
-	preview     tview.Table
-}
-
-// UpdateNext implements NextShapeObserver.
-func (p *PreviewView) UpdateNext(nextShape [][]int) {
-	// update the preview
-	p.updateView(nextShape)
+	GameService     *GameService
+	Preview         tview.Table
+	NextShapeChanel <-chan [][]int
 }
 
 func NewPreviewView(gameService *GameService) *PreviewView {
-	preView := &PreviewView{GameService: gameService}
-	gameService.AddObserver(preView)
+	nextShapeChanel := gameService.nextShapeSignal.Subscribe()
+	preView := &PreviewView{GameService: gameService, NextShapeChanel: nextShapeChanel}
 	return preView
 }
 
-func (p *PreviewView) updateView(shape [][]int) {
-	preview := p.preview
+func (p *PreviewView) UpdateView(shape [][]int) {
+	preview := p.Preview
 	rLength := len(shape)
 	cLength := len(shape[0])
 
@@ -31,22 +26,18 @@ func (p *PreviewView) updateView(shape [][]int) {
 		for c := 0; c < cLength; c++ {
 			color := p.GameService.GetColor(shape[r][c])
 			preview.SetCell(r, c, tview.NewTableCell("   ").
-				SetMaxWidth(20).
 				SetBackgroundColor(color))
 		}
 	}
-	preview.SetTitle("block")
 }
 
 func (p *PreviewView) GetView() *tview.Box {
 	previewBox := tview.NewBox().SetBackgroundColor(tcell.ColorBlack).SetBorder(true).SetTitle("Preview")
 
 	preview := tview.NewTable().SetBorders(true)
-	p.preview = *preview
-	p.GameService.InitGame()
-
+	p.Preview = *preview
 	previewViewFlex := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(preview, 0, 1, true)
+		AddItem(preview, 0, 1, false)
 	previewBox.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
 		// Calculate inner area (accounting for border)
 		innerX := x + 10
@@ -59,5 +50,11 @@ func (p *PreviewView) GetView() *tview.Box {
 		return x, y, width, height
 	})
 
+	//initialize the chanel handler that will update the view
+	go func() {
+		for chanel := range p.NextShapeChanel {
+			p.UpdateView(chanel)
+		}
+	}()
 	return previewBox
 }

@@ -7,8 +7,10 @@ import (
 
 func main() {
 	tetrisView := game.NewTetrisView()
-	ctxt := tetrisView.GameContext
-	fmt.Printf("tetris view context, status:%s, score:%d \n", ctxt.Status, ctxt.Score)
 	fmt.Println("Starting game....")
 	tetrisView.StartWindow()
+	tetrisView.StartGame()
+	if err := tetrisView.Application.Run(); err != nil {
+		panic(err)
+	}
 }
