@@ -125,6 +125,7 @@ func (tv *TetrisView) startPeriodicUpdate() {
 		success := tv.GameService.MoveDown()
 		if !success {
 			tv.GameService.ApplyBlockToBoard()
+			tv.GameService.CleanEmptyLines()
 			tv.GameService.DropNextShape()
 		}
 		go tv.Application.Draw()

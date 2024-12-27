@@ -94,7 +94,7 @@ func NewGameService() *GameService {
 	messageSignal := signal.NewSignal("")
 
 	gameService := &GameService{GameContext: gameContext, shapes: shapes, nextShapeSignal: nextShapeSignal}
-	board := gameService.initBoard()
+	board := gameService.createNewTable(BOARD_HEIGHT, BOARD_WIDTH)
 	gameContext.Board = board
 	boardSignal := signal.NewSignal(board)
 
@@ -145,14 +145,6 @@ func (gs *GameService) GetColor(color int) tcell.Color {
 
 func (gs *GameService) getCurrentShape() [][]int {
 	return gs.GameContext.CurrentShape
-}
-
-func (gs *GameService) initBoard() [][]int {
-	board := make([][]int, BOARD_HEIGHT)
-	for i := 0; i < BOARD_HEIGHT; i++ {
-		board[i] = make([]int, BOARD_WIDTH)
-	}
-	return board
 }
 
 func (gv *GameService) dropBlock() {
@@ -270,10 +262,7 @@ func (gs *GameService) Rotate() bool {
 	}
 
 	// create a new shape with the same size
-	newShape := make([][]int, nbCols)
-	for c := 0; c < nbCols; c++ {
-		newShape[c] = make([]int, nbRows)
-	}
+	newShape := gs.createNewTable(nbCols, nbRows)
 
 	for r := 0; r < nbRows; r++ {
 		for c := 0; c < nbCols; c++ {
@@ -288,4 +277,43 @@ func (gs *GameService) Rotate() bool {
 	gs.GameContext.CurrentShape = newShape
 	gs.applyPiecePosition(newShape, rPos, cPos, false)
 	return true
+}
+
+func (gs *GameService) createNewTable(nbRows, nbCols int) [][]int {
+	board := make([][]int, nbRows)
+	for i := 0; i < nbRows; i++ {
+		board[i] = make([]int, nbCols)
+	}
+	return board
+}
+
+func (gs *GameService) CleanEmptyLines() {
+	board := gs.GameContext.Board
+	newBoard := make([][]int, 0)
+
+	//remove full lines
+	for r := 0; r < BOARD_HEIGHT; r++ {
+		var isFullLine bool
+		for c := 0; c < BOARD_WIDTH; c++ {
+			if board[r][c] == 0 {
+				isFullLine = false
+				break
+			}
+			isFullLine = true
+		}
+
+		// if not empty line
+		if !isFullLine {
+			newBoard = append(newBoard, board[r])
+		}
+	}
+
+	//append empty lines at the beginning
+	nbRows := len(newBoard)
+	if nbRows < BOARD_HEIGHT {
+		for i := 0; i < BOARD_HEIGHT-nbRows; i++ {
+			newBoard = append([][]int{make([]int, BOARD_WIDTH)}, newBoard...)
+		}
+	}
+	gs.GameContext.Board = newBoard
 }
