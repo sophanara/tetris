@@ -18,6 +18,7 @@ func NewDebugScreen(gs *GameService) *DebugScreen {
 
 func (ds *DebugScreen) GetView() *tview.TextView {
 	scoreView := tview.NewTextView()
+	scoreView.SetScrollable(true).ScrollToEnd()
 	scoreView.SetBackgroundColor(tcell.ColorBlack).SetBorder(true).SetTitle("Debug console")
 
 	go func() {

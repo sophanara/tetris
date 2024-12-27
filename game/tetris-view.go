@@ -58,8 +58,7 @@ func (tv *TetrisView) UpdateNext(nextShape [][]int) {
 }
 
 func (tv *TetrisView) StartGame() {
-	tv.GameService.InitGame()
-	tv.GameService.DropBlock()
+	tv.GameService.DropNextShape()
 	// Set up key bindings
 	tv.Application.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		key := event.Key()
@@ -73,6 +72,8 @@ func (tv *TetrisView) StartGame() {
 			tv.GameService.MoveLeft()
 		case tcell.KeyRight:
 			tv.GameService.MoveRight()
+		case tcell.KeyUp:
+			tv.GameService.Rotate()
 		}
 		return event
 	})
@@ -90,13 +91,13 @@ func (tv *TetrisView) StartWindow() {
 	rightFlex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(scoreView, 0, 1, false).
-		AddItem(debugScreen, 0, 1, false)
+		AddItem(debugScreen, 0, 1, true)
 	// Add the game box to the new flex element
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexColumn).
 		AddItem(previewBox, 0, 1, false).
 		AddItem(gameBox, 0, 2, false).
-		AddItem(rightFlex, 0, 1, false)
+		AddItem(rightFlex, 0, 1, true)
 
 	tv.OuterBox.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
 		// Calculate inner area (accounting for border)
@@ -118,10 +119,14 @@ func (tv *TetrisView) StartWindow() {
 }
 
 func (tv *TetrisView) startPeriodicUpdate() {
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
-		tv.GameService.MoveDown()
+		success := tv.GameService.MoveDown()
+		if !success {
+			tv.GameService.ApplyBlockToBoard()
+			tv.GameService.DropNextShape()
+		}
 		go tv.Application.Draw()
 	}
 }

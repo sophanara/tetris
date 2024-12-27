@@ -10,57 +10,57 @@ import (
 
 var shapes = [][][]int{
 	{ // I shape (long bar)
-		{0, 0, 0, 0, 0, 0},
-		{0, 1, 1, 1, 1, 0},
-		{0, 0, 0, 0, 0, 0},
-		{0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0},
+		{1, 1, 1, 1},
+		{0, 0, 0, 0},
+		{0, 0, 0, 0},
 	},
 	{ // O shape (square)
-		{0, 0, 0, 0, 0, 0},
-		{0, 0, 2, 2, 0, 0},
-		{0, 0, 2, 2, 0, 0},
-		{0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0},
+		{0, 2, 2, 0},
+		{0, 2, 2, 0},
+		{0, 0, 0, 0},
 	},
 	{ // T shape
-		{0, 0, 0, 0, 0, 0},
-		{0, 0, 3, 0, 0, 0},
-		{0, 3, 3, 3, 0, 0},
-		{0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0},
+		{0, 3, 0, 0},
+		{3, 3, 3, 0},
+		{0, 0, 0, 0},
 	},
 	{ // S shape
-		{0, 0, 0, 0, 0, 0},
-		{0, 0, 4, 4, 0, 0},
-		{0, 4, 4, 0, 0, 0},
-		{0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0},
+		{0, 4, 4, 0},
+		{4, 4, 0, 0},
+		{0, 0, 0, 0},
 	},
 	{ // Z shape
-		{0, 0, 0, 0, 0, 0},
-		{0, 5, 5, 0, 0, 0},
-		{0, 0, 5, 5, 0, 0},
-		{0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0},
+		{5, 5, 0, 0},
+		{0, 5, 5, 0},
+		{0, 0, 0, 0},
 	},
 	{ // J shape
-		{0, 0, 0, 0, 0, 0},
-		{0, 6, 0, 0, 0, 0},
-		{0, 6, 6, 6, 0, 0},
-		{0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0},
+		{6, 0, 0, 0},
+		{6, 6, 6, 0},
+		{0, 0, 0, 0},
 	},
 	{ // L shape
-		{0, 0, 0, 0, 0, 0},
-		{0, 0, 0, 7, 0, 0},
-		{0, 7, 7, 7, 0, 0},
-		{0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0},
+		{0, 0, 7, 0},
+		{7, 7, 7, 0},
+		{0, 0, 0, 0},
 	},
 }
 
 const (
 	BOARD_WIDTH  = 10
-	BOARD_HEIGHT = 15
+	BOARD_HEIGHT = 18
 )
 
 type GameContext struct {
-	CurrentShape       *int
-	NextShape          *int
+	CurrentShape       [][]int
+	NextShape          [][]int
 	Board              [][]int
 	Status             GameStatus
 	Score              int
@@ -81,18 +81,16 @@ type GameService struct {
 func NewGameService() *GameService {
 	// generate the random number
 	randNb := rand.Intn(7)
-
+	nextShape := shapes[randNb]
 	gameContext := &GameContext{
 		Status:    END,
 		Score:     0,
 		MaxRow:    BOARD_HEIGHT,
 		MaxCol:    BOARD_WIDTH,
-		NextShape: &randNb,
+		NextShape: nextShape,
 	}
 
-	// get the shape table
-	shape := shapes[randNb]
-	nextShapeSignal := signal.NewSignal(shape)
+	nextShapeSignal := signal.NewSignal(nextShape)
 	messageSignal := signal.NewSignal("")
 
 	gameService := &GameService{GameContext: gameContext, shapes: shapes, nextShapeSignal: nextShapeSignal}
@@ -105,28 +103,23 @@ func NewGameService() *GameService {
 	return gameService
 }
 
-func (gs *GameService) InitNextShape() {
+func (gs *GameService) initNextShape() {
 	ctxt := gs.GameContext
-
 	// generate the random number
 	randNb := rand.Intn(7)
-
-	ctxt.NextShape = &randNb
-	// get the shape table
-	shape := gs.shapes[randNb]
-
-	gs.nextShapeSignal.Set(shape)
+	ctxt.NextShape = shapes[randNb]
+	gs.nextShapeSignal.Set(ctxt.NextShape)
 }
 
 func (gs *GameService) updateCurrentShape() {
 	ctxt := gs.GameContext
-	if ctxt.CurrentShape == nil {
-		ctxt.CurrentShape = ctxt.NextShape
-	}
+	ctxt.CurrentShape = ctxt.NextShape
 }
 
-func (gs *GameService) InitGame() {
+func (gs *GameService) DropNextShape() {
 	gs.updateCurrentShape()
+	gs.dropBlock()
+	gs.initNextShape()
 }
 
 func (gs *GameService) GetColor(color int) tcell.Color {
@@ -151,14 +144,8 @@ func (gs *GameService) GetColor(color int) tcell.Color {
 }
 
 func (gs *GameService) getCurrentShape() [][]int {
-	curShape := gs.GameContext.CurrentShape
-	return gs.shapes[*curShape]
+	return gs.GameContext.CurrentShape
 }
-
-// func (gs *GameService) getNextShape() [][]int {
-// 	nextShape := gs.GameContext.NextShape
-// 	return gs.shapes[*nextShape]
-// }
 
 func (gs *GameService) initBoard() [][]int {
 	board := make([][]int, BOARD_HEIGHT)
@@ -168,7 +155,7 @@ func (gs *GameService) initBoard() [][]int {
 	return board
 }
 
-func (gv *GameService) DropBlock() {
+func (gv *GameService) dropBlock() {
 	shape := gv.getCurrentShape()
 	maxCol := gv.GameContext.MaxCol
 	xpos := (maxCol - len(shape[0])) / 2
@@ -177,17 +164,14 @@ func (gv *GameService) DropBlock() {
 	gv.GameContext.CurrentColPosition = xpos
 	gv.GameContext.CurrentRowPosition = ypos
 
-	gv.ApplyPiecePosition()
+	gv.applyPiecePosition(gv.getCurrentShape(), ypos, xpos, false)
 }
 
-func (gv *GameService) ApplyPiecePosition() {
-	debugText := fmt.Sprintf("updatePiecePosition %d %d\n",
-		gv.GameContext.CurrentRowPosition, gv.GameContext.CurrentColPosition)
-	gv.messageSignal.Set(debugText)
-
-	shape := gv.getCurrentShape()
-	xpos := gv.GameContext.CurrentColPosition
-	ypos := gv.GameContext.CurrentRowPosition
+func (gv *GameService) ApplyBlockToBoard() {
+	gv.applyPiecePosition(gv.getCurrentShape(), gv.GameContext.CurrentRowPosition, gv.GameContext.CurrentColPosition, true)
+}
+func (gv *GameService) applyPiecePosition(shape [][]int, rPost int, cPost int, updateContext bool) {
+	fmt.Fprintf(gv, "updatePiecePosition %d %d\n", rPost, cPost)
 
 	// Copy the previous board add the new shape
 	board := make([][]int, BOARD_HEIGHT)
@@ -200,23 +184,26 @@ func (gv *GameService) ApplyPiecePosition() {
 		for c := 0; c < len(shape[r]); c++ {
 			value := shape[r][c]
 			if value != 0 {
-				board[r+ypos][c+xpos] = value
+				board[r+rPost][c+cPost] = value
 			}
 		}
+	}
+
+	if updateContext {
+		gv.GameContext.Board = board
 	}
 
 	gv.boardSignal.Set(board)
 }
 
 // Check if all the cell of the current piece can be moved
-func (gv *GameService) canMovePiece(nbRow int, nbCol int) bool {
+func (gv *GameService) canMovePiece(curShape [][]int, nbRow int, nbCol int) bool {
 	ctxt := gv.GameContext
 	curRowPosition := ctxt.CurrentRowPosition
 	curColPosition := ctxt.CurrentColPosition
-	curShape := gv.getCurrentShape()
 	board := ctxt.Board
 
-	gv.messageSignal.Set(fmt.Sprintf("canMovePiece %d, %d \n", curRowPosition, curColPosition))
+	fmt.Fprintf(gv, "canMovePiece %d, %d \n", curRowPosition, curColPosition)
 	for r := 0; r < len(curShape); r++ {
 		for c := 0; c < len(curShape[r]); c++ {
 			// ignore blank cell
@@ -237,28 +224,68 @@ func (gv *GameService) canMovePiece(nbRow int, nbCol int) bool {
 	return true
 }
 
-func (gv *GameService) movePiece(bnRow int, nbCol int) {
+func (gv *GameService) movePiece(bnRow int, nbCol int) bool {
 	// check if the piece can be moved
-	if !gv.canMovePiece(bnRow, nbCol) {
-		return
+	if !gv.canMovePiece(gv.getCurrentShape(), bnRow, nbCol) {
+		return false
 	}
 	// move the piece
 	gv.GameContext.CurrentRowPosition += bnRow
 	gv.GameContext.CurrentColPosition += nbCol
-	gv.ApplyPiecePosition()
+	gv.applyPiecePosition(gv.getCurrentShape(), gv.GameContext.CurrentRowPosition, gv.GameContext.CurrentColPosition, false)
+	return true
 }
 
 // Move the current piece down
-func (gv *GameService) MoveDown() {
-	gv.movePiece(1, 0)
+func (gv *GameService) MoveDown() bool {
+	return gv.movePiece(1, 0)
 }
 
 // Move the current piece left
-func (gv *GameService) MoveLeft() {
-	gv.movePiece(0, -1)
+func (gv *GameService) MoveLeft() bool {
+	return gv.movePiece(0, -1)
 }
 
 // move the current piece right
-func (gv *GameService) MoveRight() {
-	gv.movePiece(0, 1)
+func (gv *GameService) MoveRight() bool {
+	return gv.movePiece(0, 1)
+}
+
+// Allow debug output using the game service.
+func (gs *GameService) Write(p []byte) (int, error) {
+	gs.messageSignal.Set(string(p))
+	return len(p), nil
+}
+
+// rotate the current by 90 degrees
+func (gs *GameService) Rotate() bool {
+	shape := gs.getCurrentShape()
+	rPos := gs.GameContext.CurrentRowPosition
+	cPos := gs.GameContext.CurrentColPosition
+	nbRows := len(shape)
+	nbCols := len(shape[0])
+
+	if nbRows == 0 || nbCols == 0 {
+		return false
+	}
+
+	// create a new shape with the same size
+	newShape := make([][]int, nbCols)
+	for c := 0; c < nbCols; c++ {
+		newShape[c] = make([]int, nbRows)
+	}
+
+	for r := 0; r < nbRows; r++ {
+		for c := 0; c < nbCols; c++ {
+			newShape[c][nbRows-1-r] = shape[r][c]
+		}
+	}
+
+	canMove := gs.canMovePiece(newShape, 0, 0)
+	if !canMove {
+		return false
+	}
+	gs.GameContext.CurrentShape = newShape
+	gs.applyPiecePosition(newShape, rPos, cPos, false)
+	return true
 }
